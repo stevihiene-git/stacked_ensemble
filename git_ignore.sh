@@ -1,3 +1,6 @@
+# This is a Config file not  bash/executable
+
+
 cat <<EOT > .gitignore
 # Exclude virtual environment
 thesis/
