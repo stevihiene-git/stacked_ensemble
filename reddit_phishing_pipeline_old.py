@@ -11,12 +11,12 @@ Implements the methodology described in Chapter 3 of the thesis:
       3. Weighted Voting (accuracy-based weights)
       4. Weighted Voting (exponential accuracy weights, lambda=10)
   - Evaluation metrics: Accuracy, Precision, Recall, F-score, FPR, AUC, MCC
-  - Produces table 4, figure 2, table 5 (as CSV) and an ROC comparison
+  - Produces Table 4.1, Table 4.2, Table 4.3 (as CSV) and an ROC comparison
     chart, ready to drop into Chapter 4.
 
 USAGE
 -----
-    python reddit_phishing_pipeline.py --data path/to/enriched_dataset_final.csv --out results/
+    python reddit_phishing_pipeline.py --data path/to/reddit_data.csv --out results/
 
 If --data is omitted, or the file doesn't exist, a small synthetic dataset
 matching the expected schema is generated automatically so you can smoke-test
@@ -213,7 +213,7 @@ def train_baseline_models(X_train, y_train):
 
 
 # ---------------------------------------------------------------------------
-# 4. Stacked ensemble 
+# 4. Stacked ensemble (Super Learner)
 # ---------------------------------------------------------------------------
 def build_meta_features(models: dict, X, y=None, use_cv=False):
     """Builds the meta-feature matrix Z (probability of the positive class
@@ -300,7 +300,7 @@ def main(data_path: str, out_dir: str):
     # --- Train baseline (first-level) classifiers ---
     base_models = train_baseline_models(X_train, y_train)
 
-    # table 4: standalone classifier results on the held-out test set
+    # Table 4.1: standalone classifier results on the held-out test set
     baseline_results = {}
     base_train_accuracy = {}
     for name, model in base_models.items():
@@ -308,10 +308,10 @@ def main(data_path: str, out_dir: str):
         baseline_results[name] = evaluate(y_test, test_probs)
         base_train_accuracy[name] = accuracy_score(y_train, model.predict(X_train))
 
-    table_4 = pd.DataFrame(baseline_results).T
-    table_4.to_csv(os.path.join(out_dir, "table_4_baseline_results.csv"))
-    print("=== table 4: Baseline Classifier Results ===")
-    print(table_4.round(4), "\n")
+    table_4_1 = pd.DataFrame(baseline_results).T
+    table_4_1.to_csv(os.path.join(out_dir, "table_4_1_baseline_results.csv"))
+    print("=== Table 4.1: Baseline Classifier Results ===")
+    print(table_4_1.round(4), "\n")
 
     # --- Build stacked ensemble ---
     print("Building out-of-fold meta-features for stacking (this may take a while)...")
@@ -320,7 +320,7 @@ def main(data_path: str, out_dir: str):
 
     meta_learners = train_meta_learners(Z_train, y_train, base_train_accuracy)
 
-    # figure 2: stacked ensemble variant results
+    # Table 4.2: stacked ensemble variant results
     ensemble_results = {}
     ensemble_probs = {}
     for name, ml in meta_learners.items():
@@ -328,24 +328,24 @@ def main(data_path: str, out_dir: str):
         ensemble_probs[name] = probs
         ensemble_results[name] = evaluate(y_test, probs)
 
-    figure_2 = pd.DataFrame(ensemble_results).T
-    figure_2.to_csv(os.path.join(out_dir, "figure_2_stacked_ensemble_results.csv"))
-    print("=== figure 2: Stacked Ensemble Variant Results ===")
-    print(figure_2.round(4), "\n")
+    table_4_2 = pd.DataFrame(ensemble_results).T
+    table_4_2.to_csv(os.path.join(out_dir, "table_4_2_stacked_ensemble_results.csv"))
+    print("=== Table 4.2: Stacked Ensemble Variant Results ===")
+    print(table_4_2.round(4), "\n")
 
-    # --- table 5: best standalone vs. best stacked ensemble ---
-    best_baseline_name = table_4["F-score"].idxmax()
-    best_ensemble_name = figure_2["F-score"].idxmax()
-    delta = figure_2.loc[best_ensemble_name] - table_4.loc[best_baseline_name]
+    # --- Table 4.3: best standalone vs. best stacked ensemble ---
+    best_baseline_name = table_4_1["F-score"].idxmax()
+    best_ensemble_name = table_4_2["F-score"].idxmax()
+    delta = table_4_2.loc[best_ensemble_name] - table_4_1.loc[best_baseline_name]
 
-    table_5 = pd.DataFrame({
-        f"Best standalone: {best_baseline_name}": table_4.loc[best_baseline_name],
-        f"Best ensemble: {best_ensemble_name}": figure_2.loc[best_ensemble_name],
+    table_4_3 = pd.DataFrame({
+        f"Best standalone: {best_baseline_name}": table_4_1.loc[best_baseline_name],
+        f"Best ensemble: {best_ensemble_name}": table_4_2.loc[best_ensemble_name],
         "Improvement (delta)": delta,
     }).T
-    table_5.to_csv(os.path.join(out_dir, "table_5_comparison.csv"))
-    print("=== table 5: Best Standalone vs. Best Stacked Ensemble ===")
-    print(table_5.round(4), "\n")
+    table_4_3.to_csv(os.path.join(out_dir, "table_4_3_comparison.csv"))
+    print("=== Table 4.3: Best Standalone vs. Best Stacked Ensemble ===")
+    print(table_4_3.round(4), "\n")
 
     # --- ROC curve comparison chart ---
     plt.figure(figsize=(8, 6))
@@ -369,8 +369,8 @@ def main(data_path: str, out_dir: str):
     print(f"ROC comparison chart saved to: {roc_path}")
 
     print(f"\nAll results saved to: {out_dir}/")
-    print("Files: table_3_baseline_results.csv, figure_2_stacked_ensemble_results.csv, "
-          "figure_5_comparison.csv, figure_5_roc_comparison.png")
+    print("Files: table_4_1_baseline_results.csv, table_4_2_stacked_ensemble_results.csv, "
+          "table_4_3_comparison.csv, figure_4_roc_comparison.png")
 
 
 if __name__ == "__main__":
